@@ -4,88 +4,104 @@
  * 
  * This code is designed for the IED line follower project. The robot follows a line using 3 phototransistors
  */
-const int LEFT = 0;
-const int RIGHT = 1;
-const int CENTER = 2;
 
-bool is_running = false; //is the robot running 
+bool is_running = false; 
 
-//pin outputs
-int gain_state = 1;
-const int Gain_LED_1 = 2;
-const int Gain_LED_0 = 3;
+//Digital Pin Definitions
+const int GAIN_LED_0 = 2;
+const int GAIN_LED_1 = 3;
 const int PWR_LED = 4;
 const int MTR_L = 5;
 const int MTR_R = 6;
 const int IN_1_2 = 7;
-const int Gain_PB = 8;
-const int Start_PB = 9;
+const int GAIN_PB = 8;
+const int START_PB = 9;
 const int IN_3_4 = 10;
-const int Sense_Left = 11;
-const int Sense_Right = 12;
-const int Sense_Center = 13;
+
+//Analog Pin Definitions
+const int SENSE_RIGHT = 0;
+const int SENSE_LEFT = 1;
+const int SENSE_CENTER = 2;
 
 int last_dir = CENTER;
 
+//Analog Threshhold Values
+const int RIGHT_THRESH = 200;
+const int LEFT_THRESH = 200;
+const int CENT_THRESH = 200;
+
 unsigned long last_detect = 0; //time since last detection
+
+int gain = 1;
 
 void setup() {
   // configure the outputs on the Arduino
-  pinMode(Gain_LED_1, OUTPUT);  //Gain mode LED (1)
-  pinMode(Gain_LED_2, OUTPUT);  //Gain mode LED (0)
+  pinMode(GAIN_LED_0, OUTPUT);  //Gain mode LED (1)
+  pinMode(GAIN_LED_1, OUTPUT);  //Gain mode LED (0)
   pinMode(PWR_LED,OUTPUT);  //PWR/status LED
   pinMode(MTR_L,OUTPUT);  //Mtr 2 (L) PWM
   pinMode(MTR_R,OUTPUT);  //Mtr 1 (R) PWM
-  pinMode(MTR_R_In,OUTPUT);  //IN 1/2 (R)
-  pinMode(Gain_PB,INPUT);   //PB1 (Gain)
-  pinMode(Start_PB,INPUT);   //PB2 (Start)
-  pinMode(MTR_L_In,OUTPUT);  //IN 3/4 (L) 
-  pinMode(Sense_Left,INPUT);   //Left sensor
-  pinMode(Sense_Right,INPUT);   //Right sensor
-  pinMode(Sense_Center,INPUT);  //Center sensor
+  pinMode(IN_1_2, OUTPUT);	//Direction Switching for MTR_L
+  pinMode(IN_3_4, OUTPUT);	//Direction Switching for MTR_R
+  pinMode(GAIN_PB,INPUT);   //PB1 (Gain)
+  pinMode(START_PB,INPUT);   //PB2 (Start) 
 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  if(!digitalRead(Start_PB)) //if the start button is pressed
-  {
-      if(!is_running) //if not running, start and turn on LED
-      {
-         is_running = true;
-         digitalWrite(PWR_LED,LOW);
+  //if the start button is pressed
+  if(!digitalRead(Start_PB)){ 
+    //wait 1ms for debounce clear, then check again
+    delay(1);
+    if(!digitalRead(Start_PB)){
+      if(is_running){
+        //enable the running LED
+        is_running = true;
+        digitalWrite(PWR_LED, HIGH);
       }
-
-      else            //if running, stop and turn off LED
-      {
-          is_running = false;
-          digitalWrite(PWR_LED,HIGH);
-          stop_motors();
+      else{            //if running, stop and turn off LED
+        is_running = false;
+        digitalWrite(PWR_LED, LOW);
+        stop_motors();
       }
   }
-  if(!digitalRead(Gain_PB)) //if gain pressed, cycle gain
-  {
-     if (gain == 3)
-     {
-         gain = 1;
-     }
-     else gain++;
+  if(!digitalRead(Gain_PB)){ //if gain pressed, cycle gain
+    //wait 1ms for debounce clear
+    delay(1);
+    if(!digitalRead(Gain_PB)){
+      if(gain == 3){
+        gain = 1;
+      }
+      else gain++;
+      if(gain == 1){
+        digitalWrite(Gain_LED_1, HIGH);
+        digitalWrite(Gain_LED_2, LOW);
+      }
+      else if(gain == 2){
+        digitalWrite(Gain_LED_1, LOW);
+        digitalWrite(Gain_LED_2, HIGH);
+      }
+      else{
+        digitalWrite(Gain_LED_1, HIGH);
+        digitalWrite(Gain_LED_2, HIGH);
+      }
+    }
   }
-  if(is_running) //if the robot is running
+  if(is_running) 
   {
-    if(digitalRead(Sense_Center)) //if the center sensor detects the line, drive straight
+    if(isCentTrig()) //if the center sensor detects the line, drive straight
     {
       digitalWrite(MTR_L_In,HIGH);
       digitalWrite(MTR_R_In,HIGH);
       last_detect = millis();
     }
-    else if(digitalRead(Sense_Left)) //if the left sensor detects the line, turn left
+    else if(isLeftTrig()) //if the left sensor detects the line, turn left
     {
       digitalWrite(MTR_L_In,HIGH);
       digitalWrite(MTR_R_In,LOW);
       last_detect = millis();
     }
-    else if(digitalRead(Sense_Right)) //if the right sensor detects the line, turn right
+    else if(isRightTrig()) //if the right sensor detects the line, turn right
     {
       digitalWrite(MTR_L_In,LOW);
       digitalWrite(MTR_R_In,HIGH);
@@ -95,7 +111,7 @@ void loop() {
       if(millis()-last_detect > 2000) //if more than 2 seconds have passed since last detection, stop
       {
         stop_motors();
-        while(!digitalWrite(Start_PB))
+        while(digitalRead(Start_PB))
         {
           digitalWrite(PWR_LED,1);
           delay(250);
@@ -103,15 +119,34 @@ void loop() {
           delay(250);
         }
       }
-      last-detect = 0;
+      last_detect = 0;
     }
     //scale PWM as necessary - based on gain variable
   }
 }
 
-void stop_motors() //funtion to turn off the motors
+//funtion to turn off the motors
+void stop_motors() 
 {
    digitalWrite(MTR_L,LOW);
    digitalWrite(MTR_R,LOW);
+}
+//return true if the right sensor sees the line
+bool isRightTrig(){
+	if(SENSE_RIGHT > RIGHT_THRESH)
+		return true;
+	else return false;
+}
+//return true if the left sensor sees the line
+bool isLeftTrig(){
+	if(SENSE_LEFT > LEFT_THRESH)
+		return true;
+	else return false;
+}
+//return true if the center sensor sees the line
+bool isCentTrig(){
+	if(SENSE_CENTER > CENT_THRESH)
+		return true;
+	else return false;
 }
 
