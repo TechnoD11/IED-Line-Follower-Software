@@ -99,7 +99,10 @@ void loop() {
 	if(is_running){
 		switch (mode){
 			case 1:
-				if(isCentTrig()){
+				if(isLeftTrig() && isRightTrig()){
+				
+				}
+				else if(isCentTrig()){
 					goForwardFast();
 				}
 				else if(isLeftTrig()){
@@ -107,16 +110,16 @@ void loop() {
 					digitalWrite(IN_1_2, HIGH);
 					digitalWrite(IN_3_4, HIGH);
 					//motor speed: Right higher than left
-					analogWrite(MTR_L, 70);
-					analogWrite(MTR_R, 90);
+					analogWrite(MTR_L, 75);
+					analogWrite(MTR_R, 110);
 				}
 				else if(isRightTrig()){
 					//motor status: Both Forward
 					digitalWrite(IN_1_2, HIGH);
 					digitalWrite(IN_3_4, HIGH);
 					//motor speed: Left higher than Right
-					analogWrite(MTR_L, 90);
-					analogWrite(MTR_R, 70);
+					analogWrite(MTR_L, 110);
+					analogWrite(MTR_R, 75);
 				}
 				//If no sensor sees the line
 				else{
@@ -124,7 +127,10 @@ void loop() {
 				}
 				break;
 			case 2:
-				if(isCentTrig()){
+				if(isLeftTrig() && isRightTrig()){
+				
+				}
+				else if(isCentTrig()){
 					goForwardFast();
 				}
 				else if(isLeftTrig()){
@@ -132,16 +138,16 @@ void loop() {
 					digitalWrite(IN_1_2, LOW);
 					digitalWrite(IN_3_4, HIGH);
 					//motor speed: Left off, Right forward
-					analogWrite(MTR_L, 0);
-					analogWrite(MTR_R, 130);
+					analogWrite(MTR_L, 40);
+					analogWrite(MTR_R, 170);
 				}
 				else if(isRightTrig()){
 					//motor status: Left Forward, Right Backward (off)
 					digitalWrite(IN_1_2, HIGH);
 					digitalWrite(IN_3_4, LOW);
 					//motor speed: Left higher than Right
-					analogWrite(MTR_L, 130);
-					analogWrite(MTR_R, 0);
+					analogWrite(MTR_L, 170);
+					analogWrite(MTR_R, 40);
 				}
 				//If no sensor sees the line
 				else{
@@ -149,7 +155,13 @@ void loop() {
 				}
 				break;
 			case 3:
-				if(isCentTrig()){
+				if(isLeftTrig() && isRightTrig() && isCentTrig()){
+					offTrack();
+				}
+				else if(isLeftTrig() && isRightTrig()){
+					goForwardFast();
+				}
+				else if(isCentTrig()){
 					goForwardFast();
 				}
 				else if(isLeftTrig()){
@@ -157,16 +169,16 @@ void loop() {
 					digitalWrite(IN_1_2, LOW);
 					digitalWrite(IN_3_4, HIGH);
 					//motor speed: Left Reverse, Right forward
-					analogWrite(MTR_L, 150);
-					analogWrite(MTR_R, 120);
+					analogWrite(MTR_L, 220);
+					analogWrite(MTR_R, 150);
 				}
 				else if(isRightTrig()){
 					//motor status: Both Reverse
 					digitalWrite(IN_1_2, HIGH);
 					digitalWrite(IN_3_4, LOW);
 					//motor speed: Right Reverse, Left forward
-					analogWrite(MTR_L, 120);
-					analogWrite(MTR_R, 150);
+					analogWrite(MTR_L, 150);
+					analogWrite(MTR_R, 220);
 				}
 				//If no sensor sees the line
 				else{
@@ -181,8 +193,8 @@ void goForwardFast(){
 	digitalWrite(IN_1_2, HIGH);
 	digitalWrite(IN_3_4, HIGH);
 	//set motors to same speed
-	analogWrite(MTR_L, 130);
-	analogWrite(MTR_R, 130);
+	analogWrite(MTR_L, 140);
+	analogWrite(MTR_R, 140);
 }
 //call this is no of the line sensors see the line in any mode
 void noLineProcess(){
@@ -194,8 +206,34 @@ void noLineProcess(){
 		if((millis() - last_detect) > 2000){
 			isTimeUp = true;
 		}
-		analogWrite(MTR_L, 135);
-		analogWrite(MTR_R, 135);
+		analogWrite(MTR_L, 140);
+		analogWrite(MTR_R, 140);
+	}
+	isTimeUp = false;
+	if(millis() - last_detect >= 2000){
+		is_running = false;
+		last_detect = 0;
+		stop_motors();
+		while(digitalRead(START_PB)){
+          digitalWrite(PWR_LED, HIGH);
+          delay(250);
+          digitalWrite(PWR_LED, LOW);
+          delay(250);
+        }
+	}
+}
+
+void offTrack(){
+	last_detect = millis();
+	digitalWrite(IN_1_2, HIGH);
+	digitalWrite(IN_3_4, HIGH);
+	while(isRightTrig() && isLeftTrig() && !isTimeUp){	
+		Serial.println(millis() - last_detect);
+		if((millis() - last_detect) > 2000){
+			isTimeUp = true;
+		}
+		analogWrite(MTR_L, 140);
+		analogWrite(MTR_R, 140);
 	}
 	isTimeUp = false;
 	if(millis() - last_detect >= 2000){
